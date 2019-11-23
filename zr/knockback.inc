@@ -59,6 +59,11 @@ KnockbackOnClientHurt(client, attacker, const String:weapon[], hitgroup, dmg_hea
         return;
     }
 
+    if (Es_Nemesis[client])
+    {
+        return;
+    }
+
     // Block knock back if an immunity mode is handling this.
     if (ImmunityOnClientKnockBack(client))
     {
