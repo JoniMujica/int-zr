@@ -29,6 +29,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <clientprefs>
+#include <emitsoundany>
 #include <cstrike>
 #define INCLUDED_BY_ZOMBIERELOADED
 #include <zombiereloaded>
@@ -275,6 +276,7 @@ public OnMapStart()
     ZSpawnOnMapStart();
     VolInit();
     OnMapStartZM();
+    CountDown();
 
     g_beamsprite = PrecacheModel("materials/sprites/lgtning.vmt");
     g_halosprite = PrecacheModel("materials/sprites/halo01.vmt");

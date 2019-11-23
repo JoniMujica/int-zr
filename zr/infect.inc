@@ -678,6 +678,18 @@ public Action:InfectCountdown(Handle:timer)
         InfectStopCountdown();
         return Plugin_Stop;
     }
+	
+    new counter_int = RoundToNearest(length - counter);
+    char sounddir[128];
+    Format(sounddir, 128, "sound/zr/countdown/%i.mp3", counter_int);
+
+    if(FileExists(sounddir))
+    {
+		ReplaceString(sounddir, 128, "sound/", "");
+
+		if(g_Game == Game_CSGO) EmitSoundToAllAny(sounddir);
+		else EmitSoundToAll(sounddir);
+    }
 
     // Read the info from the datapack.
     ResetPack(g_hInfectCountdownData);
@@ -692,7 +704,7 @@ public Action:InfectCountdown(Handle:timer)
     }
 
     // Print the countdown text to the clients.
-    TranslationPrintCenterTextAll(false, "Infect countdown", RoundToNearest(length - counter));
+    TranslationPrintCenterTextAll(false, "Infect countdown", counter_int);
 
     counter++;
 
@@ -702,6 +714,25 @@ public Action:InfectCountdown(Handle:timer)
     WritePackFloat(g_hInfectCountdownData, counter);
 
     return Plugin_Continue;
+}
+
+CountDown()
+{
+	int count = 1;
+	char sounddir[128];
+	Format(sounddir, 128, "sound/zr/countdown/%i.mp3", count);
+
+	while(FileExists(sounddir))
+	{
+		AddFileToDownloadsTable(sounddir);
+		ReplaceString(sounddir, 128, "sound/", "");
+
+		if(g_Game != Game_CSGO) PrecacheSound(sounddir);
+		else PrecacheSoundAny(sounddir);
+
+		count++;
+		Format(sounddir, 128, "sound/zr/countdown/%i.mp3", count);
+    }
 }
 
 /**
