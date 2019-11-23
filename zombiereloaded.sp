@@ -25,28 +25,16 @@
  * ============================================================================
  */
 
-// Comment to use ZR Tools Extension, otherwise SDK Hooks Extension will be used.
-#define USE_SDKHOOKS
-
 #pragma semicolon 1
 #include <sourcemod>
 #include <sdktools>
 #include <clientprefs>
 #include <cstrike>
+#define INCLUDED_BY_ZOMBIERELOADED
+#include <zombiereloaded>
+#undef INCLUDED_BY_ZOMBIERELOADED
 
-#if defined USE_SDKHOOKS
-    #include <sdkhooks>
-    
-    #define ACTION_CONTINUE     Plugin_Continue
-    #define ACTION_CHANGED      Plugin_Changed
-    #define ACTION_HANDLED      Plugin_Handled
-#else
-    #include <zrtools>
-    
-    #define ACTION_CONTINUE     ZRTools_Continue
-    #define ACTION_CHANGED      ZRTools_Changed
-    #define ACTION_HANDLED      ZRTools_Handled
-#endif
+#include <sdkhooks>
 
 #define VERSION "3.1"
 
@@ -110,13 +98,16 @@
 #include "zr/napalm"
 #include "zr/jumpboost"
 #include "zr/zspawn"
-#include "zr/ztele"
+#include "zr/ztele/ztele"
 #include "zr/zhp"
 #include "zr/zcookies"
 #include "zr/volfeatures/volfeatures"
 #include "zr/debugtools"
 
 #include "zr/api/api"
+
+new bool:g_bLate = false;
+new bool:g_bServerStarted = false;
 
 /**
  * Record plugin info.
@@ -132,7 +123,7 @@ public Plugin:myinfo =
 
 /**
  * Called before plugin is loaded.
- * 
+ *
  * @param myself    The plugin handle.
  * @param late      True if the plugin was loaded after map change, false on map start.
  * @param error     Error message if load failed.
@@ -144,7 +135,12 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
     // Load API.
     APIInit();
-    
+
+    // Register library
+    RegPluginLibrary("zombiereloaded");
+
+    g_bLate = late;
+
     // Let plugin load.
     return APLRes_Success;
 }
@@ -155,12 +151,11 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 public OnPluginStart()
 {
     UpdateGameFolder();
-    
+
     // Forward event to modules.
     LogInit();          // Doesn't depend on CVARs.
     TranslationInit();
     CvarsInit();
-    ToolsInit();
     CookiesInit();
     CommandsInit();
     WeaponsInit();
@@ -173,7 +168,26 @@ public OnPluginStart()
 public OnAllPluginsLoaded()
 {
     // Forward event to modules.
+    RoundEndOnAllPluginsLoaded();
     WeaponsOnAllPluginsLoaded();
+    ConfigOnAllPluginsLoaded();
+}
+
+/**
+ * A library was added.
+ */
+public OnLibraryAdded(const String:name[])
+{
+    // Forward event to modules.
+    ConfigOnLibraryAdded(name);
+}
+
+/**
+ * A library was removed.
+ */
+public OnLibraryRemoved(const String:name[])
+{
+    ConfigOnLibraryRemoved(name);
 }
 
 /**
@@ -181,6 +195,11 @@ public OnAllPluginsLoaded()
  */
 public OnMapStart()
 {
+    if(!g_bServerStarted)
+    {
+        ToolsInit();
+        g_bServerStarted = true;
+    }
     // Forward event to modules.
     ClassOnMapStart();
     OverlaysOnMapStart();
@@ -229,10 +248,50 @@ public OnConfigsExecuted()
     ClassOnConfigsExecuted();
     ClassLoad();
     VolLoad();
-    
+
     // Forward event to modules. (OnModulesLoaded)
     ConfigOnModulesLoaded();
     ClassOnModulesLoaded();
+
+    // Fake roundstart
+    EventRoundStart(INVALID_HANDLE, "", false);
+
+    if(g_bLate)
+    {
+        new bool:bZombieSpawned = false;
+        for(new client = 1; client <= MaxClients; client++)
+        {
+            if(!IsClientConnected(client))
+                continue;
+
+            OnClientConnected(client);
+
+            if(IsClientInGame(client))
+            {
+                OnClientPutInServer(client);
+
+                if(AreClientCookiesCached(client))
+                    OnClientCookiesCached(client);
+
+                if(IsClientAuthorized(client))
+                    OnClientPostAdminCheck(client);
+
+                if(IsPlayerAlive(client) && GetClientTeam(client) == CS_TEAM_T)
+                {
+                    InfectHumanToZombie(client);
+                    bZombieSpawned = true;
+                }
+            }
+        }
+
+        if(bZombieSpawned)
+        {
+            // Zombies have been infected.
+            g_bZombieSpawned = true;
+        }
+
+        g_bLate = false;
+    }
 }
 
 /**
@@ -246,7 +305,7 @@ public OnClientConnected(client)
 
 /**
  * Client is joining the server.
- * 
+ *
  * @param client    The client index.
  */
 public OnClientPutInServer(client)
@@ -261,14 +320,14 @@ public OnClientPutInServer(client)
     AntiStickClientInit(client);
     SpawnProtectClientInit(client);
     RespawnClientInit(client);
-    ZTeleClientInit(client);
+    ZTele_OnClientPutInServer(client);
     ZHPClientInit(client);
     ImmunityClientInit(client);
 }
 
 /**
  * Called once a client's saved cookies have been loaded from the database.
- * 
+ *
  * @param client		Client index.
  */
 public OnClientCookiesCached(client)
@@ -278,7 +337,7 @@ public OnClientCookiesCached(client)
     {
         return;
     }
-    
+
     // Forward "OnCookiesCached" event to modules.
     ClassOnCookiesCached(client);
     WeaponsOnCookiesCached(client);
@@ -286,10 +345,10 @@ public OnClientCookiesCached(client)
 }
 
 /**
- * Called once a client is authorized and fully in-game, and 
- * after all post-connection authorizations have been performed.  
+ * Called once a client is authorized and fully in-game, and
+ * after all post-connection authorizations have been performed.
  *
- * This callback is gauranteed to occur on all clients, and always 
+ * This callback is gauranteed to occur on all clients, and always
  * after each OnClientPutInServer() call.
  *
  * @param client		Client index.
@@ -303,7 +362,7 @@ public OnClientPostAdminCheck(client)
 
 /**
  * Client is leaving the server.
- * 
+ *
  * @param client    The client index.
  */
 public OnClientDisconnect(client)
@@ -317,6 +376,7 @@ public OnClientDisconnect(client)
     ZSpawnOnClientDisconnect(client);
     VolOnPlayerDisconnect(client);
     ImmunityOnClientDisconnect(client);
+    ZTele_OnClientDisconnect(client);
 }
 
 /**
@@ -334,4 +394,23 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 {
     Class_OnPlayerRunCmd(client, vel);
     return Plugin_Continue;
+}
+
+/**
+ * When an entity is created
+ *
+ * @param       entity      Entity index
+ * @param       classname   Class name
+ */
+public OnEntityCreated(entity, const String:classname[])
+{
+    NapalmOnEntityCreated(entity, classname);
+}
+
+/**
+ * Called before every server frame.  Note that you should avoid
+ * doing expensive computations or declaring large local arrays.
+ */
+public void OnGameFrame()
+{
 }

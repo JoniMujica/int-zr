@@ -42,18 +42,18 @@ CommandsInit()
     AntiStickOnCommandsCreate();
     ZCookiesOnCommandsCreate();
     ZSpawnOnCommandsCreate();
-    ZTeleOnCommandsCreate();
+    ZTele_OnCommandsCreate();
     ZHPOnCommandsCreate();
     VolOnCommandsCreate();
     ZombieSoundsOnCommandsCreate();
     ImmunityOnCommandsCreate();
-    
+
     #if defined ADD_VERSION_INFO
         VersionOnCommandsCreate();
     #endif
-    
+
     DebugOnCommandsCreate();
-    
+
     // Forward event to modules. (hook commands)
     ClassOnCommandsHook();
 }

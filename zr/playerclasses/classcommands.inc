@@ -4,7 +4,7 @@
  *  Zombie:Reloaded
  *
  *  File:        classcommands.inc
- *  Type:        Core 
+ *  Type:        Core
  *  Description: Console commands for working with classes.
  *
  *  Copyright (C) 2009-2013  Greyscale, Richard Helgeby
@@ -29,12 +29,13 @@ ClassOnCommandsCreate()
 {
     // Register ZClass command.
     RegConsoleCmd(SAYHOOKS_KEYWORD_ZCLASS, ZClassCommand, "Opens class selection menu.");
-    
+
     // Create base class commands.
     RegConsoleCmd("zr_class_dump", ClassDumpCommand, "Dumps class data at a specified index in the specified cache. Usage: zr_class_dump <cachetype> <index|targetname>");
     RegConsoleCmd("zr_class_dump_multipliers", ClassDumpMultipliersCommand, "Dumps class attribute multipliers for the specified team. Usage: zr_class_dump_multipliers <\"zombies\"|\"humans\">");
     RegConsoleCmd("zr_class_modify", ClassModifyCommand, "Modify class data on one or more classes. Usage: zr_class_modify <classname|\"zombies\"|\"humans\"|\"admins\"> <attribute> <value> [is_multiplier]");
     RegConsoleCmd("zr_class_set_multiplier", ClassSetMultiplierCommand, "Sets the multiplier on a class attribute. Usage: zr_class_set_multiplier <\"zombies\"|\"humans\"> <attribute> <value>");
+    RegConsoleCmd("zr_class_modify_multiplier", ClassModifyMultiplierCommand, "Modifies a multiplier on a class attribute. Usage: zr_class_modify_multiplier <\"zombies\"|\"humans\"> <attribute> <value>");
     RegConsoleCmd("zr_class_reload", ClassReloadCommand, "Refreshes the player cache and reloads class attributes on one or more players. Usage: zr_class_reload <target>");
 }
 
@@ -50,7 +51,7 @@ ClassOnCommandsHook()
 /**
  * Command callback (zclass)
  * Opens class selection menu.
- * 
+ *
  * @param client    The client index.
  * @param argc      Argument count.
  */
@@ -62,10 +63,10 @@ public Action:ZClassCommand(client, argc)
         TranslationPrintToChat(client, "Must be player");
         return Plugin_Handled;
     }
-    
+
     // Send class menu.
     ClassMenuMain(client);
-    
+
     // This stops the "Unknown command" message in client's console.
     return Plugin_Handled;
 }
@@ -73,7 +74,7 @@ public Action:ZClassCommand(client, argc)
 /**
  * Command callback. (zr_class_dump)
  * Dumps class data at a specified index in the specified cache.
- *   
+ *
  * @param client    The client index.
  * @param argc      Argument count.
  */
@@ -81,14 +82,14 @@ public Action:ClassDumpCommand(client, argc)
 {
     decl String:syntax[320];
     syntax[0] = 0;
-    
+
     // Check if privileged.
     if (!ZRIsClientPrivileged(client, OperationType_Generic))
     {
         TranslationReplyToCommand(client, "No access to command");
         return Plugin_Handled;
     }
-    
+
     if (argc < 2)
     {
         // Write syntax info.
@@ -98,23 +99,23 @@ public Action:ClassDumpCommand(client, argc)
         StrCat(syntax, sizeof(syntax), "modified - Newest class data\n");
         StrCat(syntax, sizeof(syntax), "player   - Players class data\n");
         ReplyToCommand(client, syntax);
-        
+
         return Plugin_Handled;
     }
-    
+
     new cachetype = -1;
     new index = -1;
-    
+
     decl String:type[64];
     decl String:target[64];
     decl String:buffer[2048];
-    
+
     // Quick initialize buffer.
     buffer[0] = 0;
-    
+
     // Get cache type.
     GetCmdArg(1, type, sizeof(type));
-    
+
     // Set cache type depending on parameter setting.
     if (StrEqual(type, "original", false))
     {
@@ -127,11 +128,11 @@ public Action:ClassDumpCommand(client, argc)
     else if (StrEqual(type, "player", false))
     {
         cachetype = ZR_CLASS_CACHE_PLAYER;
-        
+
         // Get client index.
         GetCmdArg(2, target, sizeof(target));
         index = FindTarget(client, target, _, false);
-        
+
         // Check if failed.
         if (index < 0)
         {
@@ -139,32 +140,32 @@ public Action:ClassDumpCommand(client, argc)
             return Plugin_Handled;
         }
     }
-    
+
     // Check if cachetype is valid.
     if (cachetype < 0)
     {
         ReplyToCommand(client, "Invalid cache type.");
         return Plugin_Handled;
     }
-    
+
     // Validate class index.
     if (cachetype != ZR_CLASS_CACHE_PLAYER)
     {
         // Get class index.
         GetCmdArg(2, target, sizeof(target));
         index = StringToInt(target);
-        
+
         if (!ClassValidateIndex(index))
         {
             ReplyToCommand(client, "Invalid class index.");
             return Plugin_Handled;
         }
     }
-    
+
     // Dump the specified cache.
     ReplyToCommand(client, "DUMPING CACHE: \"%s\" (%d classes total)\n========================================\n", type, ClassCount);
     ClassDumpData(index, cachetype, buffer, sizeof(buffer));
-    
+
     // Print all data to client.
     decl String:partbuffer[1024];
     new pos;
@@ -176,14 +177,14 @@ public Action:ClassDumpCommand(client, argc)
         ReplyToCommand(client, partbuffer);
         pos += cellswritten;
     }
-    
+
     return Plugin_Handled;
 }
 
 /**
  * Command callback. (zr_class_dump_multipliers)
  * Dumps class attribute multipliers for the specified team.
- *   
+ *
  * @param client    The client index.
  * @param argc      Argument count.
  */
@@ -193,23 +194,23 @@ public Action:ClassDumpMultipliersCommand(client, argc)
     decl String:linebuffer[128];
     decl String:arg[16];
     buffer[0] = 0;
-    
+
     // Check if privileged.
     if (!ZRIsClientPrivileged(client, OperationType_Generic))
     {
         TranslationReplyToCommand(client, "No access to command");
         return Plugin_Handled;
     }
-    
+
     if (argc < 1)
     {
         // Write syntax info.
         ReplyToCommand(client, "Dumps class attribute multipliers for the specified team. Usage: zr_class_dump_multipliers <\"zombies\"|\"humans\">");
         return Plugin_Handled;
     }
-    
+
     new teamid = -1;
-    
+
     // Get team id.
     GetCmdArg(1, arg, sizeof(arg));
     if (StrEqual(arg, "zombies", false))
@@ -220,12 +221,12 @@ public Action:ClassDumpMultipliersCommand(client, argc)
     {
         teamid = ZR_CLASS_TEAM_HUMANS;
     }
-    
+
     if (teamid >= 0)
     {
         Format(linebuffer, sizeof(linebuffer), "Dumping multipliers for team: %s\n----------------------------------------\n", arg);
         StrCat(buffer, sizeof(buffer), linebuffer);
-        
+
         Format(linebuffer, sizeof(linebuffer), "Napalm time:           %f\n", ClassMultiplierCache[teamid][ClassM_NapalmTime]);
         StrCat(buffer, sizeof(buffer), linebuffer);
         Format(linebuffer, sizeof(linebuffer), "Health:                %f\n", ClassMultiplierCache[teamid][ClassM_Health]);
@@ -244,7 +245,7 @@ public Action:ClassDumpMultipliersCommand(client, argc)
         StrCat(buffer, sizeof(buffer), linebuffer);
         Format(linebuffer, sizeof(linebuffer), "Jump distance:         %f", ClassMultiplierCache[teamid][ClassM_JumpDistance]);
         StrCat(buffer, sizeof(buffer), linebuffer);
-        
+
         ReplyToCommand(client, buffer);
         return Plugin_Handled;
     }
@@ -275,14 +276,14 @@ public Action:ClassModifyCommand(client, argc)
 {
     decl String:syntax[1024];
     syntax[0] = 0;
-    
+
     // Check if privileged.
     if (!ZRIsClientPrivileged(client, OperationType_Configuration))
     {
         TranslationReplyToCommand(client, "No access to command");
         return Plugin_Handled;
     }
-    
+
     if (argc < 3)
     {
         // Write syntax info.
@@ -293,30 +294,30 @@ public Action:ClassModifyCommand(client, argc)
         StrCat(syntax, sizeof(syntax), "is_multiplier:   Optional. specifies wether the original value should be multiplied by the specified value. Not all attributes support multipliers. Defaults to false.\n\n");
         StrCat(syntax, sizeof(syntax), "Note: Original values are retrieved from the original class cache, not the modified class cache.");
         ReplyToCommand(client, syntax);
-        
+
         return Plugin_Handled;
     }
-    
+
     decl String:classname[64];
     decl String:attributename[128];
     decl String:value[256];
     decl String:ismultiplier[4];
-    
+
     new attributeflag;
     new ClassDataTypes:attributetype;
     new bool:isgroup;
     new bool:hasmultiplier;
     new Handle:classlist;
-    
+
     new classindex;
     new bool:listresult;
     classlist = CreateArray();
-    
+
     // Get command arguments.
     GetCmdArg(1, classname, sizeof(classname));
     GetCmdArg(2, attributename, sizeof(attributename));
     GetCmdArg(3, value, sizeof(value));
-    
+
     // Get last command argument if specified.
     if (argc == 4)
     {
@@ -326,20 +327,22 @@ public Action:ClassModifyCommand(client, argc)
             hasmultiplier = true;
         }
     }
-    
+
     // Get attribute flag.
     attributeflag = ClassAttributeNameToFlag(attributename);
-    
+
     // Validate attribute flag.
     if (attributeflag < 0)
     {
         ReplyToCommand(client, "Invalid class attribute specified.");
+        CloseHandle(classlist);
+
         return Plugin_Handled;
     }
-    
+
     // Get attribute data type.
     attributetype = ClassGetAttributeType(attributeflag);
-    
+
     // Check if classname is a group. Add classes to the class list
     // and use the specified team filter.
     if (StrEqual(classname, "all", false))
@@ -362,7 +365,7 @@ public Action:ClassModifyCommand(client, argc)
         listresult = ClassAddToArray(classlist, ZR_CLASS_TEAM_ADMINS);
         isgroup = true;
     }
-    
+
     // Check if classname is a group.
     if (isgroup)
     {
@@ -370,16 +373,18 @@ public Action:ClassModifyCommand(client, argc)
         if (!listresult)
         {
             ReplyToCommand(client, "Failed to get classes in the specified team: \"%s\".", classname);
+            CloseHandle(classlist);
+
             return Plugin_Handled;
         }
-        
+
         // Loop through all classes in the list.
         new listsize = GetArraySize(classlist);
-        
+
         for (new i = 0; i < listsize; i++)
         {
             classindex = GetArrayCell(classlist, i);
-            
+
             switch (attributetype)
             {
                 case ClassDataType_Boolean:
@@ -427,14 +432,16 @@ public Action:ClassModifyCommand(client, argc)
     {
         // It's a single class.
         classindex = ClassGetIndex(classname);
-        
+
         // Validate classindex.
         if (!ClassValidateIndex(classindex))
         {
             ReplyToCommand(client, "Invalid class name specified.");
+            CloseHandle(classlist);
+
             return Plugin_Handled;
         }
-        
+
         switch (attributetype)
         {
             case ClassDataType_Boolean:
@@ -477,38 +484,35 @@ public Action:ClassModifyCommand(client, argc)
             }
         }
     }
-    
+
+    CloseHandle(classlist);
+
     return Plugin_Handled;
 }
 
 /**
  * Sets the multiplier on a class attribute.
  *
- * Syntax: zr_class_modify <class> <attribute> <value> [is_multiplier]
+ * Syntax: zr_class_set_multiplier <class> <attribute> <value>
  *
  * class:           The class to modify. Can be any class name, or one of the
  *                  following team names; "all", "humans", "zombies" or
  *                  "admins".
  * attribute:       The name of the class attribute.
  * value:           Value to set. Use quotes if value is a string.
- * is_multiplier:   Optional. specifies wether the original value should be
- *                  multiplied by the specified value. Defaults to false.
- *
- * Note: Original values are retrieved from the original class cache, not the
- *       modified class cache.
  */
 public Action:ClassSetMultiplierCommand(client, argc)
 {
     decl String:syntax[320];
     syntax[0] = 0;
-    
+
     // Check if privileged.
     if (!ZRIsClientPrivileged(client, OperationType_Configuration))
     {
         TranslationReplyToCommand(client, "No access to command");
         return Plugin_Handled;
     }
-    
+
     if (argc < 3)
     {
         // Write syntax info.
@@ -518,20 +522,20 @@ public Action:ClassSetMultiplierCommand(client, argc)
         ReplyToCommand(client, syntax);
         return Plugin_Handled;
     }
-    
+
     decl String:teamname[16];
     decl String:attributename[32];
     decl String:multiplier[32];
-    
+
     new teamid = -1;
     new ClassMultipliers:attribute;
     new Float:value;
-    
+
     // Get arguments.
     GetCmdArg(1, teamname, sizeof(teamname));
     GetCmdArg(2, attributename, sizeof(attributename));
     GetCmdArg(3, multiplier, sizeof(multiplier));
-    
+
     // Get team id.
     if (StrEqual(teamname, "zombies", false))
     {
@@ -541,37 +545,148 @@ public Action:ClassSetMultiplierCommand(client, argc)
     {
         teamid = ZR_CLASS_TEAM_HUMANS;
     }
-    
+
     // Validate team id.
     if (teamid < 0)
     {
         ReplyToCommand(client, "Invalid team name: %s", teamname);
         return Plugin_Handled;
     }
-    
+
     // Get attribute type.
     attribute = ClassAttributeNameToMultiplier(attributename);
-    
+
     // Validate type.
     if (attribute == ClassM_Invalid)
     {
         ReplyToCommand(client, "Attribute is invalid or not a multiplier: %s", attributename);
         return Plugin_Handled;
     }
-    
+
     // Get value.
     value = StringToFloat(multiplier);
-    
+
     // Set multiplier.
     ClassMultiplierCache[teamid][attribute] = value;
-    
+
+    return Plugin_Handled;
+}
+
+/**
+ * Modifies a multiplier on a class attribute.
+ *
+ * Syntax: zr_class_modify_multiplier <class> <attribute> <value>
+ *
+ * class:           The class to modify. Can be any class name, or one of the
+ *                  following team names; "all", "humans", "zombies" or
+ *                  "admins".
+ * attribute:       The name of the class attribute.
+ * value:           Value to set. Use quotes if value is a string.
+ *                  Mathematical operators "+", "-", "/" and "*" are supported,
+ *                  will be parsed and will modify the chosen attribute properly.
+ */
+public Action:ClassModifyMultiplierCommand(client, argc)
+{
+    decl String:syntax[320];
+    syntax[0] = 0;
+
+    // Check if privileged.
+    if (!ZRIsClientPrivileged(client, OperationType_Configuration))
+    {
+        TranslationReplyToCommand(client, "No access to command");
+        return Plugin_Handled;
+    }
+
+    if (argc < 3)
+    {
+        // Write syntax info.
+        StrCat(syntax, sizeof(syntax), "Modifies a multiplier on a class attribute. Usage: zr_class_modify_multiplier <\"zombies\"|\"humans\"> <attribute> <[+-/*]value>\n\n");
+        StrCat(syntax, sizeof(syntax), "Valid attributes:\n----------------------------------------\n");
+        StrCat(syntax, sizeof(syntax), "napalm_time\nhealth\nhealth_regen_interval\nhealth_regen_amount\nhealth_infect_gain\nspeed\nknockback\njump_height\njump_distance");
+        ReplyToCommand(client, syntax);
+        return Plugin_Handled;
+    }
+
+    decl String:teamname[16];
+    decl String:attributename[32];
+    decl String:multiplier[32];
+
+    new teamid = -1;
+    new ClassMultipliers:attribute;
+    new Float:value;
+
+    // Get arguments.
+    GetCmdArg(1, teamname, sizeof(teamname));
+    GetCmdArg(2, attributename, sizeof(attributename));
+    GetCmdArg(3, multiplier, sizeof(multiplier));
+
+    // Get team id.
+    if (StrEqual(teamname, "zombies", false))
+    {
+        teamid = ZR_CLASS_TEAM_ZOMBIES;
+    }
+    else if (StrEqual(teamname, "humans", false))
+    {
+        teamid = ZR_CLASS_TEAM_HUMANS;
+    }
+
+    // Validate team id.
+    if (teamid < 0)
+    {
+        ReplyToCommand(client, "Invalid team name: %s", teamname);
+        return Plugin_Handled;
+    }
+
+    // Get attribute type.
+    attribute = ClassAttributeNameToMultiplier(attributename);
+
+    // Validate type.
+    if (attribute == ClassM_Invalid)
+    {
+        ReplyToCommand(client, "Attribute is invalid or not a multiplier: %s", attributename);
+        return Plugin_Handled;
+    }
+
+    switch (multiplier[0])
+    {
+        case '+':
+        {
+            value = StringToFloat(multiplier[1]);
+            ClassMultiplierCache[teamid][attribute] += value;
+        }
+
+        case '-':
+        {
+            value = StringToFloat(multiplier[1]);
+            ClassMultiplierCache[teamid][attribute] -= value;
+        }
+
+        case '/':
+        {
+            value = StringToFloat(multiplier[1]);
+            ClassMultiplierCache[teamid][attribute] /= value;
+        }
+
+        case '*':
+        {
+            value = StringToFloat(multiplier[1]);
+            ClassMultiplierCache[teamid][attribute] *= value;
+        }
+
+        default:
+        {
+            value = StringToFloat(multiplier);
+            ClassMultiplierCache[teamid][attribute] = value;
+        }
+    }
+
     return Plugin_Handled;
 }
 
 /**
  * Command callback. (zr_class_reload)
  * Dumps class data at a specified index in the specified cache.
- *   
+ *
  * @param client    The client index.
  * @param argc      Argument count.
  */
@@ -582,25 +697,25 @@ public Action:ClassReloadCommand(client, argc)
     new targetlist[MAXPLAYERS + 1];
     new targetcount;
     new bool:tn_is_ml;
-    
+
     // Check if privileged.
     if (!ZRIsClientPrivileged(client, OperationType_Generic))
     {
         TranslationReplyToCommand(client, "No access to command");
         return Plugin_Handled;
     }
-    
+
     if (argc < 1)
     {
         // Write syntax info.
         ReplyToCommand(client, "Refreshes the player cache and reloads class attributes on one or more players. Usage: zr_class_reload <target>");
-        
+
         return Plugin_Handled;
     }
-    
+
     // Get the target string.
     GetCmdArg(1, arg, sizeof(arg));
-    
+
     // Get target clients.
     if ((targetcount = ProcessTargetString(arg, client, targetlist, sizeof(targetlist), 0, targetname, sizeof(targetname), tn_is_ml)) <= 0)
     {
@@ -608,13 +723,13 @@ public Action:ClassReloadCommand(client, argc)
         ReplyToTargetError(client, targetcount);
         return Plugin_Handled;
     }
-    
+
     // Loop through each target.
     for (new target = 0; target < targetcount; target++)
     {
         ClassReloadPlayer(targetlist[target]);
     }
-    
+
     // Check phrase format.
     if (tn_is_ml)
     {
@@ -624,7 +739,7 @@ public Action:ClassReloadCommand(client, argc)
     {
         ReplyToCommand(client, "Refreshed cache to %s.", targetname);
     }
-    
+
     return Plugin_Handled;
 }
 
@@ -643,7 +758,7 @@ stock bool:ClassModifyBoolean(classindex, attributeflag, bool:value)
     {
         return false;
     }
-    
+
     switch (attributeflag)
     {
         case ZR_CLASS_ENABLED:
@@ -667,7 +782,7 @@ stock bool:ClassModifyBoolean(classindex, attributeflag, bool:value)
             return true;
         }
     }
-    
+
     // Invalid flag or multiple flags combined.
     return false;
 }
@@ -691,15 +806,20 @@ stock ClassModifyInteger(classindex, attributeflag, value, Float:multiplier = 0.
     {
         return false;
     }
-    
+
     // Check if multiplier is specified.
     new bool:ismultiplier = (multiplier != 0.0) ? true : false;
-    
+
     switch (attributeflag)
     {
         case ZR_CLASS_FLAGS:
         {
             ClassDataCache[classindex][Class_Flags] = value;
+            return true;
+        }
+        case ZR_CLASS_MODEL_SKIN_INDEX:
+        {
+            ClassDataCache[classindex][Class_ModelSkinIndex] = value;
             return true;
         }
         case ZR_CLASS_ALPHA_INITIAL:
@@ -789,7 +909,7 @@ stock ClassModifyInteger(classindex, attributeflag, value, Float:multiplier = 0.
             return true;
         }
     }
-    
+
     // Invalid flag or multiple flags combined.
     return false;
 }
@@ -812,7 +932,7 @@ stock ClassModifyFloat(classindex, attributeflag, Float:value, bool:ismultiplier
     {
         return false;
     }
-    
+
     switch (attributeflag)
     {
         case ZR_CLASS_NAPALM_TIME:
@@ -870,7 +990,7 @@ stock ClassModifyFloat(classindex, attributeflag, Float:value, bool:ismultiplier
             return true;
         }
     }
-    
+
     // Invalid flag or multiple flags combined.
     return false;
 }
@@ -890,12 +1010,17 @@ stock ClassModifyString(classindex, attributeflag, const String:value[])
     {
         return false;
     }
-    
+
     switch (attributeflag)
     {
         case ZR_CLASS_GROUP:
         {
             strcopy(ClassDataCache[classindex][Class_Group], 64, value);
+            return true;
+        }
+        case ZR_CLASS_SM_FLAGS:
+        {
+            strcopy(ClassDataCache[classindex][Class_SM_Flags], 64, value);
             return true;
         }
         case ZR_CLASS_NAME:
@@ -922,7 +1047,7 @@ stock ClassModifyString(classindex, attributeflag, const String:value[])
         {
             // Convert to mode.
             new ImmunityMode:mode = ImmunityStringToMode(value);
-            
+
             // Validate.
             if (mode != Immunity_Invalid)
             {
@@ -935,7 +1060,7 @@ stock ClassModifyString(classindex, attributeflag, const String:value[])
             }
         }
     }
-    
+
     // Invalid flag or multiple flags combined.
     return false;
 }

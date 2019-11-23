@@ -43,28 +43,28 @@ new Float:g_flClassApplySpeed[MAXPLAYERS + 1];
 bool:ClassApplyAttributes(client, bool:improved = false)
 {
     new classindex = ClassGetActiveIndex(client);
-    
+
     // Validate class index.
     if (!ClassValidateIndex(classindex))
     {
         return false;
     }
-    
+
     // Override improved settings if it's a mother zombie class.
     if (ClassHasFlags(classindex, ZR_CLASS_FLAG_MOTHER_ZOMBIE))
     {
         improved = false;
     }
-    
+
     ClassApplyModel(client, classindex);
     ClassApplyAlpha(client, classindex);
     ClassApplyOverlay(client, classindex);
     ClassApplyNightVision(client, classindex);
     ClassApplyFOV(client, classindex);
     ClassApplyHealth(client, classindex, improved);
-    ClassApplyHealthRegen(client, classindex);
+    ClassApplyHealthRegen(client, classindex, improved);
     ClassApplySpeed(client, classindex);
-    
+
     return true;
 }
 
@@ -88,7 +88,8 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     new ModelTeam:team;
     new access;
     new model;
-    
+    new skinIndex = 0;
+
     // Get correct index according to cache type.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -98,23 +99,26 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         index = classindex;
     }
-    
+
     // Get the model path from the specified cache.
     ClassGetModelPath(index, modelpath, sizeof(modelpath), cachetype);
-    
+
+    // Get model skin index.
+    skinIndex = ClassGetModelSkinIndex(index, cachetype);
+
     // Get model team setting from the specified cache.
     team = ModelsTeamIdToTeam(ClassGetTeamID(index, cachetype));
-    
+
     // Check if the user specified a pre-defined model setting. If so, setup
     // model filter settings.
     if (StrEqual(modelpath, "random", false))
     {
         // Set access filter flags.
         access = MODEL_ACCESS_PUBLIC | MODEL_ACCESS_ADMINS;
-        
+
         // Specify client for including admin models if client is admin.
         index = client;
-        
+
         isAttributePreset = true;
     }
     else if (StrEqual(modelpath, "random_public", false))
@@ -145,7 +149,7 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         // Get current model.
         GetClientModel(client, modelpath, sizeof(modelpath));
-        
+
         // Restore original model if not already set.
         if (!StrEqual(ClassOriginalPlayerModel[client], modelpath))
         {
@@ -162,13 +166,13 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
         // Do nothing.
         return true;
     }
-    
+
     // Check if model setting is a attribute preset.
     if (isAttributePreset)
     {
         // Get model based on filter settings set up earlier.
         model = ModelsGetRandomModel(index, team, access);
-        
+
         // Check if found.
         if (model >= 0)
         {
@@ -183,8 +187,10 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
             ModelsGetFullPath(model, modelpath, sizeof(modelpath));
         }
     }
-    
+
     SetEntityModel(client, modelpath);
+    SetEntProp(client, Prop_Send, "m_nSkin", skinIndex);
+
     return true;
 }
 
@@ -203,7 +209,7 @@ bool:ClassApplyModel(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 bool:ClassApplyAlpha(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new alpha;
-    
+
     // Get the alpha value from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -213,12 +219,12 @@ bool:ClassApplyAlpha(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         alpha = ClassGetAlphaInitial(classindex, cachetype);
     }
-    
+
     if (alpha < 0)
     {
         return false;
     }
-    
+
     ToolsSetClientAlpha(client, alpha);
     return true;
 }
@@ -238,7 +244,7 @@ bool:ClassApplyAlpha(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 bool:ClassApplyOverlay(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     decl String:overlaypath[PLATFORM_MAX_PATH];
-    
+
     // Get the overlay path from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -248,7 +254,7 @@ bool:ClassApplyOverlay(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         ClassGetOverlayPath(classindex, overlaypath, sizeof(overlaypath), cachetype);
     }
-    
+
     ClassOverlayInitialize(client, overlaypath);
     return true;
 }
@@ -268,7 +274,7 @@ bool:ClassApplyOverlay(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 bool:ClassApplyNightVision(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new bool:nvgs;
-    
+
     // Get the night vision setting from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -278,10 +284,11 @@ bool:ClassApplyNightVision(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER
     {
         nvgs = ClassGetNvgs(classindex, cachetype);
     }
-    
+
     ToolsSetClientNightVision(client, nvgs);
-    ToolsSetClientNightVision(client, nvgs, false);
-    
+    if (!nvgs)
+        ToolsSetClientNightVision(client, nvgs, false);
+
     return true;
 }
 
@@ -300,7 +307,7 @@ bool:ClassApplyNightVision(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER
 bool:ClassApplyFOV(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new fov;
-    
+
     // Get the field of view setting from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -310,7 +317,7 @@ bool:ClassApplyFOV(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         fov = ClassGetFOV(classindex, cachetype);
     }
-    
+
     ToolsSetClientDefaultFOV(client, fov);
     return true;
 }
@@ -331,7 +338,7 @@ bool:ClassApplyFOV(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 bool:ClassApplyHealth(client, classindex, bool:boost = false, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new health;
-    
+
     // Get the health points from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -341,12 +348,12 @@ bool:ClassApplyHealth(client, classindex, bool:boost = false, cachetype = ZR_CLA
     {
         health = ClassGetHealth(classindex, cachetype);
     }
-    
+
     if (boost)
     {
         health *= 2;
     }
-    
+
     SetEntityHealth(client, health);
     return true;
 }
@@ -364,12 +371,12 @@ bool:ClassApplyHealth(client, classindex, bool:boost = false, cachetype = ZR_CLA
  *                      ZR_CLASS_CACHE_PLAYER (default) - Player cache.
  * @return  True if applied, false otherwise.
  */
-bool:ClassApplyHealthRegen(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
+bool:ClassApplyHealthRegen(client, classindex, bool:boost = false, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new Float:interval;
     new amount;
     new max;
-    
+
     // Get the health regeneration info from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -383,7 +390,12 @@ bool:ClassApplyHealthRegen(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER
         amount = ClassGetHealthRegenAmount(classindex, cachetype);
         max = ClassGetHealth(classindex, cachetype);
     }
-    
+
+    if (boost)
+    {
+        max *= 2;
+    }
+
     if (interval > 0)
     {
         ClassHealthRegenInitClient(client, interval, amount, max);
@@ -412,7 +424,7 @@ bool:ClassApplyHealthRegen(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER
 bool:ClassApplySpeed(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
 {
     new Float:speed;
-    
+
     // Get the health points from the specified cache.
     if (cachetype == ZR_CLASS_CACHE_PLAYER)
     {
@@ -422,7 +434,7 @@ bool:ClassApplySpeed(client, classindex, cachetype = ZR_CLASS_CACHE_PLAYER)
     {
         speed = ClassGetSpeed(classindex, cachetype);
     }
-    
+
     ClassApplySpeedEx(client, speed);
     return true;
 }
@@ -452,7 +464,7 @@ ClassApplySpeedEx(client, Float:speed)
 /**
  * Called before the client can "think"
  * Here we can change the client's speed through m_flMaxSpeed.
- * 
+ *
  * @param client    The client index.
  */
 public ClassPreThinkPost(client)
@@ -464,7 +476,7 @@ public ClassPreThinkPost(client)
         {
             return;
         }
-        
+
         // Note: Default is around 200.0 - 250.0
         new Float:newspeed = GetEntPropFloat(client, Prop_Data, "m_flMaxspeed") + g_flClassApplySpeed[client];
         SetEntPropFloat(client, Prop_Data, "m_flMaxspeed", newspeed);
@@ -481,21 +493,21 @@ Class_OnPlayerRunCmd(client, Float:vel[3])
 {
     if (!IsPlayerAlive(client))
         return;
-    
+
     // Only modify speed if the prop method is used.
     if (ClassSpeedMethod == ClassSpeed_Prop)
     {
         // x-axis speed.
         if (vel[0] < 0.0)
             vel[0] = -5000.0;
-        
+
         else if (vel[0] > 0.0)
             vel[0] = 5000.0;
-        
+
         // y-axis speed.
         if (vel[1] < 0.0)
             vel[1] = -5000.0;
-        
+
         else if (vel[1] > 0.0)
             vel[1] = 5000.0;
     }

@@ -4,7 +4,7 @@
  *  Zombie:Reloaded
  *
  *  File:          weaponammo.inc
- *  Type:          Core 
+ *  Type:          Core
  *  Description:   API for all weaponammo-related functions.
  *
  *  Copyright (C) 2009-2013  Greyscale, Richard Helgeby
@@ -40,6 +40,10 @@
 #define WEAPONAMMO_HEGRENADE_LIMIT      1
 #define WEAPONAMMO_FLASHBANG_LIMIT      2
 #define WEAPONAMMO_SMOKEGRENADE_LIMIT   1
+#define WEAPONAMMO_INCENDIARY_LIMIT     1
+#define WEAPONAMMO_MOLOTOV_LIMIT        1
+#define WEAPONAMMO_DECOY_LIMIT          1
+#define WEAPONAMMO_TACTICAL_LIMIT       1
 /**
  * @endsection
  */
@@ -64,10 +68,16 @@ new g_iToolsAmmo;
  */
 enum WeaponAmmoGrenadeType
 {
-    GrenadeType_Invalid         = -1,   /** Invalid grenade slot. */
-    GrenadeType_HEGrenade       = 11,   /** HEGrenade slot */
-    GrenadeType_Flashbang       = 12,   /** Flashbang slot. */
-    GrenadeType_Smokegrenade    = 13,   /** Smokegrenade slot. */
+    GrenadeType_Invalid             = -1,   /** Invalid grenade slot. */
+    GrenadeType_HEGrenade           = 11,   /** CSS - HEGrenade slot */
+    GrenadeType_Flashbang           = 12,   /** CSS - Flashbang slot. */
+    GrenadeType_Smokegrenade        = 13,   /** CSS - Smokegrenade slot. */
+    GrenadeType_HEGrenadeCSGO       = 14,   /** CSGO - HEGrenade slot. */
+    GrenadeType_FlashbangCSGO       = 15,   /** CSGO - Flashbang slot. */
+    GrenadeType_SmokegrenadeCSGO    = 16,   /** CSGO - Smokegrenade slot. */
+    GrenadeType_Incendiary          = 17,   /** CSGO - Incendiary and Molotov slot. */
+    GrenadeType_Decoy               = 18,   /** CSGO - Decoy slot. */
+    GrenadeType_Tactical            = 22,   /** CSGO - Tactical slot. */
 }
 
 /**
@@ -90,14 +100,14 @@ WeaponAmmoOnOffsetsFound()
     {
         LogEvent(false, LogType_Fatal, LOG_CORE_EVENTS, LogModule_Weapons, "Offsets", "Offset \"CBaseCombatWeapon::m_iClip1\" was not found.");
     }
-    
+
     // If offset "m_iClip2" can't be found, then stop the plugin.
     g_iToolsClip2 = FindSendPropInfo("CBaseCombatWeapon", "m_iClip2");
     if (g_iToolsClip2 == -1)
     {
         LogEvent(false, LogType_Fatal, LOG_CORE_EVENTS, LogModule_Weapons, "Offsets", "Offset \"CBaseCombatWeapon::m_iClip2\" was not found.");
     }
-    
+
     // If offset "m_iAmmo" can't be found, then stop the plugin.
     g_iToolsAmmo = FindSendPropInfo("CBasePlayer", "m_iAmmo");
     if (g_iToolsAmmo == -1)
@@ -108,7 +118,7 @@ WeaponAmmoOnOffsetsFound()
 
 /**
  * Set clip/reserve ammo on a weapon.
- * 
+ *
  * @param weapon    The weapon index.
  * @param clip      True sets clip ammo, false sets reserve.
  * @param value     The amount of ammo to set to.
@@ -118,23 +128,23 @@ stock WeaponAmmoSetAmmo(weapon, bool:clip, value, bool:add = false)
 {
     // Set variable to offset we are changing.
     new ammooffset = clip ? g_iToolsClip1 : g_iToolsClip2;
-    
+
     // Initialize variable (value is 0)
     new ammovalue;
-    
+
     // If we are adding, then update variable with current ammo value.
     if (add)
     {
         ammovalue = WeaponAmmoGetAmmo(weapon, clip);
     }
-    
+
     // Return ammo offset value.
     SetEntData(weapon, ammooffset, ammovalue + value, _, true);
 }
 
 /**
  * Get clip/reserve ammo on a weapon.
- * 
+ *
  * @param weapon    The weapon index.
  * @param clip      True gets clip ammo, false gets reserve.
  */
@@ -142,36 +152,36 @@ stock WeaponAmmoGetAmmo(weapon, bool:clip)
 {
     // Set variable to offset we are changing.
     new ammooffset = clip ? g_iToolsClip1 : g_iToolsClip2;
-    
+
     // Return ammo offset value.
     return GetEntData(weapon, ammooffset);
 }
 
 /**
  * Set the count of any grenade-type a client has.
- * 
+ *
  * @param client    The client index.
  * @param slot      The type of
  * @param value     The amount of ammo to set to.
- * @param add       (Optional) If true, the value is added to the grenades' current ammo count. 
+ * @param add       (Optional) If true, the value is added to the grenades' current ammo count.
  */
 stock WeaponAmmoSetGrenadeCount(client, WeaponAmmoGrenadeType:type, value, bool:add)
 {
     // Initialize variable (value is 0)
     new ammovalue;
-    
+
     // If we are adding, then update variable with current ammo value.
     if (add)
     {
         ammovalue = WeaponAmmoGetGrenadeCount(client, type);
     }
-    
+
     SetEntData(client, g_iToolsAmmo + (_:type * 4), ammovalue + value, _, true);
 }
 
 /**
  * Get the count of any grenade-type a client has.
- * 
+ *
  * @param client    The client index.
  * @param slot      The type of
  */
@@ -182,7 +192,7 @@ stock WeaponAmmoGetGrenadeCount(client, WeaponAmmoGrenadeType:type)
 
 /**
  * Takes a weapon entity and returns an entry in enum WeaponAmmoGrenadeType.
- * 
+ *
  * @param weaponentity  The weapon entity to find entry for.
  * @return              An entry in WeaponAmmoGrenadeType.
  */
@@ -190,48 +200,85 @@ stock WeaponAmmoGrenadeType:WeaponAmmoEntityToGrenadeType(const String:weaponent
 {
     if (StrEqual(weaponentity, "weapon_hegrenade"))
     {
-        return GrenadeType_HEGrenade;
+        if (g_Game == Game_CSGO)
+            return GrenadeType_HEGrenadeCSGO;
+        else
+            return GrenadeType_HEGrenade;
     }
     else if (StrEqual(weaponentity, "weapon_flashbang"))
     {
-        return GrenadeType_Flashbang;
+        if (g_Game == Game_CSGO)
+            return GrenadeType_FlashbangCSGO;
+        else
+            return GrenadeType_Flashbang;
     }
     else if (StrEqual(weaponentity, "weapon_smokegrenade"))
     {
-        return GrenadeType_Smokegrenade;
+        if (g_Game == Game_CSGO)
+            return GrenadeType_SmokegrenadeCSGO;
+        else
+            return GrenadeType_Smokegrenade;
     }
-    
+    else if (StrEqual(weaponentity, "weapon_molotov"))
+    {
+        return GrenadeType_Incendiary;
+    }
+    else if (StrEqual(weaponentity, "weapon_incgrenade"))
+    {
+        return GrenadeType_Incendiary;
+    }
+    else if (StrEqual(weaponentity, "weapon_decoy"))
+    {
+        return GrenadeType_Decoy;
+    }
+    else if (StrEqual(weaponentity, "weapon_tagrenade"))
+    {
+        return GrenadeType_Tactical;
+    }
+
     return GrenadeType_Invalid;
 }
 
 /**
  * Returns the max amount of this type of grenades the client is allowed to carry.
- * 
+ *
  * @param weaponentity  The weapon entity to get the limit for.
- * @return              The grenade limit, -1 if an unhandled grenade entity was given. 
+ * @return              The grenade limit, -1 if an unhandled grenade entity was given.
  */
  stock WeaponAmmoGetGrenadeLimit(WeaponAmmoGrenadeType:grenadetype)
  {
     switch(grenadetype)
     {
-        case GrenadeType_HEGrenade:
+        case GrenadeType_HEGrenade, GrenadeType_HEGrenadeCSGO:
         {
             // Attempt to find a cvar provided by an outside plugin.
             new Handle:gplimit = FindConVar(GRENADE_PACK_CVAR_LIMIT);
-            
+
             // If Grenade Pack is loaded and the cvar was found, then get the value of the outside cvar, if not return CS:S default.
             return (g_bGrenadePack && gplimit != INVALID_HANDLE) ? GetConVarInt(gplimit) : WEAPONAMMO_HEGRENADE_LIMIT;
         }
-        case GrenadeType_Flashbang:
+        case GrenadeType_Flashbang, GrenadeType_FlashbangCSGO:
         {
             return WEAPONAMMO_FLASHBANG_LIMIT;
         }
-        case GrenadeType_Smokegrenade:
+        case GrenadeType_Smokegrenade, GrenadeType_SmokegrenadeCSGO:
         {
             return WEAPONAMMO_SMOKEGRENADE_LIMIT;
         }
+        case GrenadeType_Incendiary:
+        {
+            return WEAPONAMMO_INCENDIARY_LIMIT;
+        }
+        case GrenadeType_Decoy:
+        {
+            return WEAPONAMMO_DECOY_LIMIT;
+        }
+        case GrenadeType_Tactical:
+        {
+            return WEAPONAMMO_TACTICAL_LIMIT;
+        }
     }
-    
+
     return -1;
 }
 
@@ -243,25 +290,25 @@ stock bool:ZMarketIsGPLoaded()
     new Handle:hPlugins = GetPluginIterator();
     new Handle:hPlugin;
     decl String:strPlugin[PLATFORM_MAX_PATH];
-    
+
     while (MorePlugins(hPlugins))
     {
         // Read the next plugin.
         hPlugin = ReadPlugin(hPlugins);
-        
+
         GetPluginFilename(hPlugin, strPlugin, sizeof(strPlugin));
         if (!StrEqual(strPlugin, GRENADE_PACK_FILENAME, false))
         {
             continue;
         }
-        
+
         // Plugin was found, now return true only if it is running.
         return (GetPluginStatus(hPlugin) == Plugin_Running);
     }
-    
+
     // Done iterating, close handle.
     CloseHandle(hPlugins);
-    
+
     // Plugin wasn't found.
     return false;
 }
